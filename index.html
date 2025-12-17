@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riftrade — Multi-Broker Trading Infrastructure</title>
+    <meta name="description" content="One API. Every broker. Riftrade unifies your trading across MT5, OANDA, IG, and more.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #111113;
+            --text-primary: #fafafa;
+            --text-secondary: #888890;
+            --accent: #22ff88;
+            --accent-dim: rgba(34, 255, 136, 0.1);
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'DM Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Animated gradient background */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse 80% 50% at 20% -10%, rgba(34, 255, 136, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(34, 255, 136, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: linear-gradient(to bottom, var(--bg-primary) 0%, transparent 100%);
+        }
+
+        .logo {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.5rem;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 3rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            animation: fadeUp 0.8s ease forwards;
+            animation-delay: 0.2s;
+        }
+
+        .hero-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(3rem, 10vw, 8rem);
+            font-weight: 400;
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: fadeUp 0.8s ease forwards;
+            animation-delay: 0.4s;
+        }
+
+        .hero-title em {
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .hero-subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin-bottom: 3rem;
+            opacity: 0;
+            animation: fadeUp 0.8s ease forwards;
+            animation-delay: 0.6s;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .cta-group {
+            display: flex;
+            gap: 1rem;
+            opacity: 0;
+            animation: fadeUp 0.8s ease forwards;
+            animation-delay: 0.8s;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-decoration: none;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background: transparent;
+            color: var(--accent);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-primary);
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+
+        /* Ticker tape */
+        .ticker-container {
+            position: absolute;
+            bottom: 3rem;
+            left: 0;
+            right: 0;
+            overflow: hidden;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 0;
+        }
+
+        .ticker {
+            display: flex;
+            animation: scroll 30s linear infinite;
+            width: max-content;
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0 3rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .ticker-item .symbol {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .ticker-item .positive {
+            color: var(--accent);
+        }
+
+        .ticker-item .negative {
+            color: #ff4466;
+        }
+
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Features Section */
+        .features {
+            padding: 8rem 3rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(2rem, 5vw, 4rem);
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            margin-bottom: 4rem;
+            max-width: 600px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2px;
+            background: var(--border);
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            padding: 3rem;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: var(--bg-primary);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+        }
+
+        .feature-card h3 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* Brokers Section */
+        .brokers {
+            padding: 8rem 3rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .brokers-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .brokers-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+        }
+
+        .brokers-grid {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 3rem;
+            opacity: 0.4;
+        }
+
+        .broker-logo {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            transition: opacity 0.3s ease;
+        }
+
+        .broker-logo:hover {
+            opacity: 1;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 8rem 3rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            position: relative;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1px;
+            height: 4rem;
+            background: linear-gradient(to bottom, var(--accent), transparent);
+        }
+
+        .cta-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+        }
+
+        .waitlist-form {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .waitlist-form input {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .waitlist-form input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .waitlist-form input:focus {
+            border-color: var(--accent);
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                padding: 1rem 1.5rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 0 1.5rem;
+            }
+
+            .features, .brokers, .cta-section {
+                padding: 4rem 1.5rem;
+            }
+
+            .waitlist-form {
+                flex-direction: column;
+            }
+
+            footer {
+                flex-direction: column;
+                gap: 1.5rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header>
+        <a href="/" class="logo">
+            <span class="logo-dot"></span>
+            Riftrade
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#docs">Docs</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <p class="hero-label">Multi-Broker Trading Infrastructure</p>
+        <h1 class="hero-title">One API.<br><em>Every</em> broker.</h1>
+        <p class="hero-subtitle">Riftrade unifies your trading across MT5, OANDA, IG, and more. Connect once, trade everywhere.</p>
+        <div class="cta-group">
+            <a href="#waitlist" class="btn btn-primary">Join Waitlist</a>
+            <a href="#docs" class="btn btn-secondary">Read Docs</a>
+        </div>
+
+        <div class="ticker-container">
+            <div class="ticker">
+                <div class="ticker-item"><span class="symbol">EUR/USD</span> 1.0523 <span class="positive">+0.12%</span></div>
+                <div class="ticker-item"><span class="symbol">GBP/USD</span> 1.2645 <span class="negative">-0.08%</span></div>
+                <div class="ticker-item"><span class="symbol">USD/JPY</span> 154.32 <span class="positive">+0.24%</span></div>
+                <div class="ticker-item"><span class="symbol">XAU/USD</span> 2,648.50 <span class="positive">+0.45%</span></div>
+                <div class="ticker-item"><span class="symbol">BTC/USD</span> 104,250 <span class="negative">-1.2%</span></div>
+                <div class="ticker-item"><span class="symbol">US500</span> 6,074.5 <span class="positive">+0.33%</span></div>
+                <div class="ticker-item"><span class="symbol">EUR/USD</span> 1.0523 <span class="positive">+0.12%</span></div>
+                <div class="ticker-item"><span class="symbol">GBP/USD</span> 1.2645 <span class="negative">-0.08%</span></div>
+                <div class="ticker-item"><span class="symbol">USD/JPY</span> 154.32 <span class="positive">+0.24%</span></div>
+                <div class="ticker-item"><span class="symbol">XAU/USD</span> 2,648.50 <span class="positive">+0.45%</span></div>
+                <div class="ticker-item"><span class="symbol">BTC/USD</span> 104,250 <span class="negative">-1.2%</span></div>
+                <div class="ticker-item"><span class="symbol">US500</span> 6,074.5 <span class="positive">+0.33%</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <p class="section-label">Why Riftrade</p>
+        <h2 class="section-title">Built for traders who refuse to be locked in.</h2>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Unified API</h3>
+                <p>One consistent interface across all brokers. Write your strategy once, deploy it anywhere.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔗</div>
+                <h3>Multi-Broker</h3>
+                <p>MT5, OANDA, IG Markets, and more. Connect your existing accounts or open new ones.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>Self-Hosted</h3>
+                <p>Your infrastructure, your control. No third-party dependencies on your trading execution.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚙️</div>
+                <h3>Rules Engine</h3>
+                <p>Define trading rules without code. Risk management, position sizing, and execution logic.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Real-Time Data</h3>
+                <p>Stream quotes, positions, and account data. WebSocket and REST APIs included.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>Secure</h3>
+                <p>Credentials never leave your infrastructure. End-to-end encryption on all connections.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="brokers">
+        <div class="brokers-inner">
+            <p class="brokers-title">Supported Brokers</p>
+            <div class="brokers-grid">
+                <span class="broker-logo">MetaTrader 5</span>
+                <span class="broker-logo">OANDA</span>
+                <span class="broker-logo">IG Markets</span>
+                <span class="broker-logo">Vantage</span>
+                <span class="broker-logo">IC Markets</span>
+                <span class="broker-logo">Pepperstone</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section" id="waitlist">
+        <h2 class="cta-title">Get early access</h2>
+        <p class="cta-subtitle">Join the waitlist for priority access when we launch.</p>
+        <form class="waitlist-form" onsubmit="event.preventDefault(); alert('Thanks! We\'ll be in touch.');">
+            <input type="email" placeholder="you@email.com" required>
+            <button type="submit" class="btn btn-primary">Notify Me</button>
+        </form>
+    </section>
+
+    <footer>
+        <span>© 2025 Riftrade</span>
+        <div class="footer-links">
+            <a href="#">Twitter</a>
+            <a href="#">GitHub</a>
+            <a href="#">Discord</a>
+        </div>
+    </footer>
+</body>
+</html>
